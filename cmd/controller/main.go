@@ -30,6 +30,7 @@ type config struct {
 	AmpApiKeyFile string `envconfig:"amp_api_key_file"`
 	AmpApiUrl     string `envconfig:"amp_api_url"`
 	AmpCategoryId int    `envconfig:"amp_category_id"`
+	AmpBufferDays int    `envconfig:"amp_buffer_days" default:"3"`
 }
 
 func main() {
@@ -45,7 +46,9 @@ func main() {
 
 	amember.ApiKey = getPassword(c.AmpApiKey, c.AmpApiKeyFile)
 	amember.ApiRootUrl = c.AmpApiUrl
-	amember.InstallApi(c.AmpCategoryId)
+	amember.AccessBufferDays = c.AmpBufferDays
+	amember.ProductCategoryId = c.AmpCategoryId
+	amember.InstallApi()
 
 	mqttPassword := getPassword(c.MqttPassword, c.MqttPasswordFile)
 	if err = doors.Connect(doors.MqttOptions{

@@ -9,18 +9,15 @@ import (
 var doors = make([]*Door, 0)
 var doorMutex sync.Mutex
 
-func Count(offlineAfter time.Duration) int {
+func All() []*Door {
 	doorMutex.Lock()
 	defer doorMutex.Unlock()
 
-	online := 0
+	newDoors := make([]*Door, 0)
 	for _, d := range doors {
-		if time.Until(d.lastPing) < offlineAfter {
-			online++
-		}
+		newDoors = append(newDoors, d)
 	}
-
-	return online
+	return newDoors
 }
 
 type Door struct {
@@ -29,7 +26,29 @@ type Door struct {
 }
 
 func (d *Door) Open() error {
-	return nil
+	return sendCommand(map[string]any{
+		"cmd":    "opendoor",
+		"doorip": d.doorIp,
+	})
+}
+
+func (d *Door) SetFobEnabled(fob string, userName string, enabled bool) error {
+	acctype := 0
+	if enabled {
+		acctype = 1
+	}
+	return sendCommand(map[string]any{
+		"cmd":        "adduser",
+		"doorip":     d.doorIp,
+		"uid":        fob,
+		"user":       userName,
+		"acctype":    acctype,
+		"validuntil": 2145916800, // forever (effectively)
+	})
+}
+
+func (d *Door) IsOnline() bool {
+	return time.Now().Sub(d.lastPing) < OfflineAfter
 }
 
 func discoverDoor(msg map[string]any) {

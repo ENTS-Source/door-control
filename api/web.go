@@ -11,17 +11,23 @@ import (
 )
 
 type HealthOptions struct {
-	ExpectedDoors    int
-	DoorOfflineAfter time.Duration
+	ExpectedDoors int
 }
 
 var srv *http.Server
 
-func Init(addr string, static string, healthOpts HealthOptions) *sync.WaitGroup {
+func Start(addr string, static string, healthOpts HealthOptions) *sync.WaitGroup {
 	wg := new(sync.WaitGroup)
 
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		if doors.Count(healthOpts.DoorOfflineAfter) != healthOpts.ExpectedDoors {
+		defer r.Body.Close()
+		online := 0
+		for _, d := range doors.All() {
+			if d.IsOnline() {
+				online++
+			}
+		}
+		if online != healthOpts.ExpectedDoors {
 			w.WriteHeader(http.StatusExpectationFailed)
 			_, _ = w.Write([]byte(http.StatusText(http.StatusExpectationFailed)))
 		} else {

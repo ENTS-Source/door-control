@@ -5,7 +5,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	"github.com/ents-source/door-control/amember"
 	"github.com/ents-source/door-control/api"
 	"github.com/ents-source/door-control/assets"
 	"github.com/ents-source/door-control/doors"
@@ -13,14 +15,21 @@ import (
 )
 
 type config struct {
-	HttpBind         string `envconfig:"http_bind" default:"0.0.0.0:8080"`
+	HttpBind string `envconfig:"http_bind" default:"0.0.0.0:8080"`
+
 	MqttUri          string `envconfig:"mqtt_uri" default:"tcp://127.0.0.1:1883"`
 	MqttUser         string `envconfig:"mqtt_username"`
 	MqttPassword     string `envconfig:"mqtt_password"`
 	MqttPasswordFile string `envconfig:"mqtt_password_file"`
 	MqttTopic        string `envconfig:"mqtt_topic" default:"rfid"`
-	EspInterval      int    `envconfig:"esp_ping_seconds" default:"10"`
-	EspExpectNum     int    `envconfig:"esp_expect_num" default:"1"`
+
+	EspInterval  int `envconfig:"esp_ping_seconds" default:"10"`
+	EspExpectNum int `envconfig:"esp_expect_num" default:"1"`
+
+	AmpApiKey     string `envconfig:"amp_api_key"`
+	AmpApiKeyFile string `envconfig:"amp_api_key_file"`
+	AmpApiUrl     string `envconfig:"amp_api_url"`
+	AmpCategoryId int    `envconfig:"amp_category_id"`
 }
 
 func main() {
@@ -30,10 +39,15 @@ func main() {
 		log.Fatal(err)
 	}
 
-	mqttPassword := getPassword(c.MqttPassword, c.MqttPasswordFile)
-
 	webPath := assets.SetupWeb()
 
+	doors.OfflineAfter = time.Duration(c.EspInterval) * time.Second
+
+	amember.ApiKey = getPassword(c.AmpApiKey, c.AmpApiKeyFile)
+	amember.ApiRootUrl = c.AmpApiUrl
+	amember.InstallApi(c.AmpCategoryId)
+
+	mqttPassword := getPassword(c.MqttPassword, c.MqttPasswordFile)
 	if err = doors.Connect(doors.MqttOptions{
 		Uri:      c.MqttUri,
 		Username: c.MqttUser,
@@ -43,7 +57,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	wg := api.Init(c.HttpBind, webPath, api.HealthOptions{ExpectedDoors: c.EspExpectNum})
+	wg := api.Start(c.HttpBind, webPath, api.HealthOptions{ExpectedDoors: c.EspExpectNum})
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)

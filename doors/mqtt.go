@@ -1,6 +1,7 @@
 package doors
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -17,6 +18,7 @@ type MqttOptions struct {
 }
 
 var client mqtt.Client
+var sendTopic string
 
 func waitMqtt(token mqtt.Token) error {
 	finishedOk := token.WaitTimeout(10 * time.Second)
@@ -45,11 +47,23 @@ func Connect(conn MqttOptions) error {
 	if err := waitMqtt(client.Subscribe(fmt.Sprintf("%s", conn.Topic), 2, onDoorRoot)); err != nil {
 		return errors.Join(errors.New("error during subscribe to root"), err)
 	}
+	sendTopic = conn.Topic
 	return nil
 }
 
 func Disconnect() {
 	client.Disconnect(100) // wait 100ms for work to finish
+}
+
+func sendCommand(cmd map[string]any) error {
+	b, err := json.Marshal(cmd)
+	if err != nil {
+		return err
+	}
+
+	log.Println("[MQTT>>] ", string(b))
+	err = waitMqtt(client.Publish(sendTopic, 1, false, string(b)))
+	return err
 }
 
 func onDoorSync(client mqtt.Client, message mqtt.Message) {

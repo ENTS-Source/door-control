@@ -31,3 +31,9 @@ func GetUser(id int) (User, error) {
 	}
 	return val[0], nil
 }
+
+func GetAllUsers() ([]User, error) {
+	query := url.Values{}
+	query.Set("_nested[]", "access")
+	return allPages[User]("/api/users", query)
+}

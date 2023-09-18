@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ents-source/door-control/api/auth"
 	"github.com/ents-source/door-control/doors"
 )
 
@@ -15,42 +16,50 @@ var ProductCategoryId int
 var AccessBufferDays int
 
 func InstallApi() {
-	http.HandleFunc("/v1/amember", func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
-		b, err := io.ReadAll(r.Body)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
+	http.HandleFunc("/v1/amember", doWebhook)
+	http.HandleFunc("/v1/amember/resync", auth.Require(doResync))
+}
 
-		vals, err := url.ParseQuery(string(b))
-		ev := vals.Get("am-event")
-		log.Println("[aMember Pro Webhook]", ev)
-		switch ev {
-		case "accessAfterInsert":
-			fallthrough
-		case "accessAfterUpdate":
-			fallthrough
-		case "accessAfterDelete":
-			fallthrough
-		case "userAfterInsert":
-			fallthrough
-		case "userAfterUpdate":
-			userId, err := strconv.Atoi(vals.Get("user[user_id]"))
-			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-			resyncUser(userId)
-			w.WriteHeader(http.StatusOK)
-			return
-		case "userAfterDelete":
-			// TODO@@
-		default:
-			w.WriteHeader(http.StatusNotFound)
+func doResync(w http.ResponseWriter, r *http.Request) {
+	ResyncAllUsers()
+	w.WriteHeader(http.StatusOK)
+}
+
+func doWebhook(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+	b, err := io.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	vals, err := url.ParseQuery(string(b))
+	ev := vals.Get("am-event")
+	log.Println("[aMember Pro Webhook]", ev)
+	switch ev {
+	case "accessAfterInsert":
+		fallthrough
+	case "accessAfterUpdate":
+		fallthrough
+	case "accessAfterDelete":
+		fallthrough
+	case "userAfterInsert":
+		fallthrough
+	case "userAfterUpdate":
+		userId, err := strconv.Atoi(vals.Get("user[user_id]"))
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-	})
+		resyncUser(userId)
+		w.WriteHeader(http.StatusOK)
+		return
+	case "userAfterDelete":
+		log.Printf("User %s was deleted - they will be caught in the next global sync", vals.Get("user[user_id]"))
+	default:
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
 }
 
 func resyncUser(id int) {

@@ -47,6 +47,13 @@ func (d *Door) SetFobEnabled(fob string, userName string, enabled bool) error {
 	})
 }
 
+func (d *Door) DeleteUserRecords() error {
+	return sendCommand(map[string]any{
+		"cmd":    "deletusers",
+		"doorip": d.doorIp,
+	})
+}
+
 func (d *Door) IsOnline() bool {
 	return time.Now().Sub(d.lastPing) < OfflineAfter
 }

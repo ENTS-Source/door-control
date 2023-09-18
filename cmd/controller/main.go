@@ -9,6 +9,7 @@ import (
 
 	"github.com/ents-source/door-control/amember"
 	"github.com/ents-source/door-control/api"
+	"github.com/ents-source/door-control/api/auth"
 	"github.com/ents-source/door-control/assets"
 	"github.com/ents-source/door-control/doors"
 	"github.com/kelseyhightower/envconfig"
@@ -16,6 +17,9 @@ import (
 
 type config struct {
 	HttpBind string `envconfig:"http_bind" default:"0.0.0.0:8080"`
+
+	ApiSharedKey     string `envconfig:"api_shared_key"`
+	ApiSharedKeyFile string `envconfig:"api_shared_key_file"`
 
 	MqttUri          string `envconfig:"mqtt_uri" default:"tcp://127.0.0.1:1883"`
 	MqttUser         string `envconfig:"mqtt_username"`
@@ -26,11 +30,12 @@ type config struct {
 	EspInterval  int `envconfig:"esp_ping_seconds" default:"10"`
 	EspExpectNum int `envconfig:"esp_expect_num" default:"1"`
 
-	AmpApiKey     string `envconfig:"amp_api_key"`
-	AmpApiKeyFile string `envconfig:"amp_api_key_file"`
-	AmpApiUrl     string `envconfig:"amp_api_url"`
-	AmpCategoryId int    `envconfig:"amp_category_id"`
-	AmpBufferDays int    `envconfig:"amp_buffer_days" default:"3"`
+	AmpApiKey      string `envconfig:"amp_api_key"`
+	AmpApiKeyFile  string `envconfig:"amp_api_key_file"`
+	AmpApiUrl      string `envconfig:"amp_api_url"`
+	AmpCategoryId  int    `envconfig:"amp_category_id"`
+	AmpBufferDays  int    `envconfig:"amp_buffer_days" default:"3"`
+	AmpResyncHours int    `envconfig:"amp_resync_hours" default:"4"`
 }
 
 func main() {
@@ -41,6 +46,8 @@ func main() {
 	}
 
 	webPath := assets.SetupWeb()
+
+	auth.ApiAuthKey = getPassword(c.ApiSharedKey, c.ApiSharedKeyFile)
 
 	doors.OfflineAfter = time.Duration(c.EspInterval) * time.Second
 
@@ -62,11 +69,25 @@ func main() {
 
 	wg := api.Start(c.HttpBind, webPath, api.HealthOptions{ExpectedDoors: c.EspExpectNum})
 
+	timer := time.NewTicker(time.Duration(c.AmpResyncHours) * time.Hour)
+	go func() {
+		for {
+			select {
+			case <-timer.C:
+				log.Println("Resyncing all users on timer")
+				amember.ResyncAllUsers()
+			}
+		}
+	}()
+
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		defer close(stop)
 		<-stop
+
+		log.Println("Stopping timer...")
+		timer.Stop()
 
 		log.Println("Stopping doors...")
 		doors.Disconnect()

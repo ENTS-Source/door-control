@@ -50,6 +50,7 @@ func main() {
 	auth.ApiAuthKey = getPassword(c.ApiSharedKey, c.ApiSharedKeyFile)
 
 	doors.OfflineAfter = time.Duration(c.EspInterval) * time.Second
+	doors.InstallApi()
 
 	amember.ApiKey = getPassword(c.AmpApiKey, c.AmpApiKeyFile)
 	amember.ApiRootUrl = c.AmpApiUrl

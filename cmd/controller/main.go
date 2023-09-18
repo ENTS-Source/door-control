@@ -11,6 +11,7 @@ import (
 	"github.com/ents-source/door-control/api"
 	"github.com/ents-source/door-control/api/auth"
 	"github.com/ents-source/door-control/assets"
+	"github.com/ents-source/door-control/db"
 	"github.com/ents-source/door-control/doors"
 	"github.com/kelseyhightower/envconfig"
 )
@@ -36,6 +37,8 @@ type config struct {
 	AmpCategoryId  int    `envconfig:"amp_category_id"`
 	AmpBufferDays  int    `envconfig:"amp_buffer_days" default:"3"`
 	AmpResyncHours int    `envconfig:"amp_resync_hours" default:"4"`
+
+	DbPath string `envconfig:"db_path" default:"./controller.db"`
 }
 
 func main() {
@@ -46,6 +49,8 @@ func main() {
 	}
 
 	webPath := assets.SetupWeb()
+
+	db.ConnectionString = c.DbPath
 
 	auth.ApiAuthKey = getPassword(c.ApiSharedKey, c.ApiSharedKeyFile)
 
@@ -95,6 +100,9 @@ func main() {
 
 		log.Println("Stopping api...")
 		api.Stop()
+
+		log.Println("Stopping database...")
+		db.Stop()
 
 		log.Println("Cleaning up...")
 		_ = os.RemoveAll(webPath)

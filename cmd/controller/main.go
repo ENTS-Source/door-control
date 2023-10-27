@@ -13,6 +13,7 @@ import (
 	"github.com/ents-source/door-control/assets"
 	"github.com/ents-source/door-control/db"
 	"github.com/ents-source/door-control/doors"
+	"github.com/ents-source/door-control/matrix"
 	"github.com/kelseyhightower/envconfig"
 )
 
@@ -39,6 +40,13 @@ type config struct {
 	AmpResyncHours int    `envconfig:"amp_resync_hours" default:"4"`
 
 	DbPath string `envconfig:"db_path" default:"./controller.db"`
+
+	MxHomeserverUrl   string `envconfig:"matrix_hs_url"`
+	MxUserId          string `envconfig:"matrix_user_id"`
+	MxAccessToken     string `envconfig:"matrix_access_token"`
+	MxAccessTokenFile string `envconfig:"matrix_access_token_file"`
+	MxAnnounceRoomId  string `envconfig:"matrix_announce_room_id"`
+	MxLogRoomId       string `envconfig:"matrix_log_room_id"`
 }
 
 func main() {
@@ -63,6 +71,13 @@ func main() {
 	amember.ProductCategoryId = c.AmpCategoryId
 	amember.InstallApi()
 
+	accessToken := getPassword(c.MxAccessToken, c.MxAccessTokenFile)
+	matrix.LogRoomId = c.MxLogRoomId
+	matrix.AnnounceRoomId = c.MxAnnounceRoomId
+	if err = matrix.Connect(c.MxHomeserverUrl, c.MxUserId, accessToken); err != nil {
+		log.Fatal(err)
+	}
+
 	mqttPassword := getPassword(c.MqttPassword, c.MqttPasswordFile)
 	if err = doors.Connect(doors.MqttOptions{
 		Uri:      c.MqttUri,
@@ -71,6 +86,23 @@ func main() {
 		Topic:    c.MqttTopic,
 	}); err != nil {
 		log.Fatal(err)
+	}
+
+	doors.OnAccess = func(door string, fob string, time time.Time, granted bool) {
+		var err2 error
+		if err2 = matrix.LogAccess(door, fob, time, granted); err2 != nil {
+			log.Println("Error logging door access record: ", err2)
+		}
+
+		if granted {
+			if announce, nickname, err2 := db.IsAnnounceEnabled(fob); err2 != nil {
+				log.Println("Error checking announcement status: ", err2)
+			} else if announce && nickname != "" {
+				if err2 = matrix.AnnounceAccess(door, nickname); err2 != nil {
+					log.Println("Error announcing door access record: ", err2)
+				}
+			}
+		}
 	}
 
 	wg := api.Start(c.HttpBind, webPath, api.HealthOptions{ExpectedDoors: c.EspExpectNum})
@@ -100,6 +132,9 @@ func main() {
 
 		log.Println("Stopping api...")
 		api.Stop()
+
+		log.Println("Stopping matrix...")
+		matrix.Stop()
 
 		log.Println("Stopping database...")
 		db.Stop()

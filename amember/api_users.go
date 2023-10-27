@@ -9,6 +9,8 @@ type User struct {
 	Id        int            `json:"user_id"`
 	Fob       string         `json:"fob"`
 	FobAccess string         `json:"fob_access"`
+	Announce  []string       `json:"announce"`
+	Nickname  string         `json:"nickname"`
 	Nested    usersNestedVal `json:"nested"`
 }
 

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ents-source/door-control/api/auth"
+	"github.com/ents-source/door-control/db"
 	"github.com/ents-source/door-control/doors"
 )
 
@@ -93,6 +94,7 @@ func updateUserFromRecord(user User) {
 	case "":
 		// First we need to find an access record for the product category we should be
 		// looking for.
+		didUpdate := false
 		for _, row := range user.Nested.Access {
 			usefulRow := false
 			for _, pid := range productIds {
@@ -117,12 +119,30 @@ func updateUserFromRecord(user User) {
 
 			if startDate.Before(time.Now()) && endDate.After(time.Now()) {
 				doors.SetFobEnabled(user.Fob, user.Id, true)
-				return
+				didUpdate = true
+				break
 			}
 		}
-		doors.SetFobEnabled(user.Fob, user.Id, false) // no useful access records
+		if !didUpdate {
+			doors.SetFobEnabled(user.Fob, user.Id, false) // no useful access records
+		}
 	default:
 		log.Println("Unknown FobAccess value", user.FobAccess)
-		return
+	}
+
+	announceEnabled := false
+	for _, v := range user.Announce {
+		if v == "announce" {
+			announceEnabled = true
+			if err = db.UpsertAnnounce(user.Fob, true, user.Nickname); err != nil {
+				log.Println("Error upserting announce status=true", err)
+			}
+			break
+		}
+	}
+	if !announceEnabled {
+		if err = db.UpsertAnnounce(user.Fob, false, user.Nickname); err != nil {
+			log.Println("Error upserting announce status=false", err)
+		}
 	}
 }

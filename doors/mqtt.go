@@ -129,6 +129,10 @@ func onDoorSend(client mqtt.Client, message mqtt.Message) {
 				return
 			}
 
+			if OnAccess != nil {
+				OnAccess(door, fob, time.UnixMilli(int64(ts)*1000), access)
+			}
+
 			log.Println("Access record stored in database")
 		}
 	}

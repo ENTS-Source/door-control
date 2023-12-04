@@ -41,7 +41,7 @@ type config struct {
 
 	DbPath string `envconfig:"db_path" default:"./controller.db"`
 
-	MxHomeserverUrl   string `envconfig:"matrix_hs_url"`
+	MxHomeserverUrl   string `envconfig:"matrix_hs_url"` // leave blank to disable
 	MxUserId          string `envconfig:"matrix_user_id"`
 	MxAccessToken     string `envconfig:"matrix_access_token"`
 	MxAccessTokenFile string `envconfig:"matrix_access_token_file"`
@@ -71,11 +71,13 @@ func main() {
 	amember.ProductCategoryId = c.AmpCategoryId
 	amember.InstallApi()
 
-	accessToken := getPassword(c.MxAccessToken, c.MxAccessTokenFile)
-	matrix.LogRoomId = c.MxLogRoomId
-	matrix.AnnounceRoomId = c.MxAnnounceRoomId
-	if err = matrix.Connect(c.MxHomeserverUrl, c.MxUserId, accessToken); err != nil {
-		log.Fatal(err)
+	if c.MxHomeserverUrl != "" {
+		accessToken := getPassword(c.MxAccessToken, c.MxAccessTokenFile)
+		matrix.LogRoomId = c.MxLogRoomId
+		matrix.AnnounceRoomId = c.MxAnnounceRoomId
+		if err = matrix.Connect(c.MxHomeserverUrl, c.MxUserId, accessToken); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	mqttPassword := getPassword(c.MqttPassword, c.MqttPasswordFile)

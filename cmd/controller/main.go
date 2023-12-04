@@ -32,12 +32,12 @@ type config struct {
 	EspInterval  int `envconfig:"esp_ping_seconds" default:"10"`
 	EspExpectNum int `envconfig:"esp_expect_num" default:"1"`
 
-	AmpApiKey      string `envconfig:"amp_api_key"`
-	AmpApiKeyFile  string `envconfig:"amp_api_key_file"`
-	AmpApiUrl      string `envconfig:"amp_api_url"`
-	AmpCategoryId  int    `envconfig:"amp_category_id"`
-	AmpBufferDays  int    `envconfig:"amp_buffer_days" default:"3"`
-	AmpResyncHours int    `envconfig:"amp_resync_hours" default:"4"`
+	AmpApiKey       string `envconfig:"amp_api_key"`
+	AmpApiKeyFile   string `envconfig:"amp_api_key_file"`
+	AmpApiUrl       string `envconfig:"amp_api_url"`
+	AmpCategoryId   int    `envconfig:"amp_category_id"`
+	AmpBufferDays   int    `envconfig:"amp_buffer_days" default:"3"`
+	AmpResyncOnHour int    `envconfig:"amp_resync_on_hour" default:"4"`
 
 	DbPath string `envconfig:"db_path" default:"./controller.db"`
 
@@ -109,16 +109,7 @@ func main() {
 
 	wg := api.Start(c.HttpBind, webPath, api.HealthOptions{ExpectedDoors: c.EspExpectNum})
 
-	timer := time.NewTicker(time.Duration(c.AmpResyncHours) * time.Hour)
-	go func() {
-		for {
-			select {
-			case <-timer.C:
-				log.Println("Resyncing all users on timer")
-				amember.ResyncAllUsers()
-			}
-		}
-	}()
+	timer := scheduleResync(c)
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
@@ -163,4 +154,25 @@ func getPassword(in string, f string) string {
 		passwd = string(b)
 	}
 	return passwd
+}
+
+func scheduleResync(c config) *time.Timer {
+	now := time.Now()
+	target := time.Date(now.Year(), now.Month(), now.Day(), c.AmpResyncOnHour, 0, 0, 0, time.Local)
+	if target.Before(now) {
+		target = target.Add(24 * time.Hour)
+	}
+	log.Println(target.String())
+	timer := time.NewTimer(time.Until(target))
+	go func() {
+		for {
+			select {
+			case <-timer.C:
+				log.Println("Resyncing all users on timer")
+				amember.ResyncAllUsers()
+				scheduleResync(c)
+			}
+		}
+	}()
+	return timer
 }

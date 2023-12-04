@@ -71,10 +71,10 @@ func resyncUser(id int) {
 		return
 	}
 
-	updateUserFromRecord(user)
+	updateUserFromRecord(user, false)
 }
 
-func updateUserFromRecord(user User) {
+func updateUserFromRecord(user User, skipIfDisabled bool) {
 	if user.Fob == "" || user.Fob == "N/A" {
 		return // no possible change
 	}
@@ -123,7 +123,7 @@ func updateUserFromRecord(user User) {
 				break
 			}
 		}
-		if !didUpdate {
+		if !didUpdate && !skipIfDisabled {
 			doors.SetFobEnabled(user.Fob, user.Id, false) // no useful access records
 		}
 	default:

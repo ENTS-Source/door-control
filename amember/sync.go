@@ -21,6 +21,6 @@ func ResyncAllUsers() {
 
 	doors.DeleteAllUsers()
 	for _, u := range users {
-		updateUserFromRecord(u)
+		updateUserFromRecord(u, true)
 	}
 }

@@ -16,12 +16,9 @@ func Connect(homeserverUrl string, userId string, accessToken string) error {
 		return err
 	}
 
-	//return client.Sync()
 	return nil
 }
 
 func Stop() {
-	//if client != nil {
-	//	client.StopSync()
-	//}
+	// Nothing to do
 }

@@ -101,7 +101,7 @@ func doRequest[R any](endpoint string, query url.Values) (R, error) {
 			return zero, err
 		}
 
-		log.Println("DEBUG: aMember Pro response: ", string(b))
+		log.Println("aMember Pro response: ", string(b))
 
 		var val R
 		err = json.Unmarshal(b, &val)

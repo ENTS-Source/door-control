@@ -3,6 +3,7 @@
 FROM golang:1.20-bookworm AS builder
 
 # Install build dependencies
+RUN apt-get update
 RUN apt-get install -y git dos2unix build-essential
 
 WORKDIR /opt

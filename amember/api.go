@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -79,7 +78,6 @@ func doRequest[R any](endpoint string, query url.Values) (R, error) {
 	if err != nil {
 		return zero, err
 	}
-	log.Println(pth)
 	req, err := http.NewRequest(http.MethodGet, pth, nil)
 	if err != nil {
 		return zero, err
@@ -102,8 +100,6 @@ func doRequest[R any](endpoint string, query url.Values) (R, error) {
 			return zero, err
 		}
 
-		log.Println("aMember Pro response: ", string(b))
-
 		var val R
 		err = json.Unmarshal(b, &val)
 		if err != nil {
@@ -112,12 +108,6 @@ func doRequest[R any](endpoint string, query url.Values) (R, error) {
 
 		return val, nil
 	} else {
-		b, err := io.ReadAll(res.Body)
-		if err != nil {
-			return zero, err
-		}
-		log.Println("aMember Pro error: ", string(b))
-
 		return zero, fmt.Errorf("http error %d %s", res.StatusCode, res.Status)
 	}
 }

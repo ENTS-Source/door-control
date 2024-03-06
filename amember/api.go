@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -99,6 +100,8 @@ func doRequest[R any](endpoint string, query url.Values) (R, error) {
 		if err != nil {
 			return zero, err
 		}
+
+		log.Println("DEBUG: aMember Pro response: ", string(b))
 
 		var val R
 		err = json.Unmarshal(b, &val)

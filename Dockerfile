@@ -23,7 +23,7 @@ RUN apk add --no-cache \
         dos2unix
 
 COPY --from=builder \
- /opt/bin/controller
+ /opt/bin/controller \
  /usr/local/bin/
 
 COPY ./config.sample.yaml /etc/media-repo.yaml.sample

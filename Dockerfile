@@ -26,7 +26,5 @@ COPY --from=builder \
  /opt/bin/controller \
  /usr/local/bin/
 
-COPY ./config.sample.yaml /etc/media-repo.yaml.sample
-
 CMD /usr/local/bin/controller
 EXPOSE 8000

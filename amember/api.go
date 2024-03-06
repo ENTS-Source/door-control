@@ -111,6 +111,12 @@ func doRequest[R any](endpoint string, query url.Values) (R, error) {
 
 		return val, nil
 	} else {
+		b, err := io.ReadAll(res.Body)
+		if err != nil {
+			return zero, err
+		}
+		log.Println("aMember Pro error: ", string(b))
+		
 		return zero, fmt.Errorf("http error %d %s", res.StatusCode, res.Status)
 	}
 }

@@ -25,4 +25,4 @@ COPY --from=builder \
  /usr/local/bin/
 
 CMD /usr/local/bin/controller
-EXPOSE 8000
+EXPOSE 8080

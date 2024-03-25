@@ -18,7 +18,7 @@ RUN ./build.sh
 FROM debian:bookworm
 
 RUN apt-get update
-RUN apt-get install -y ca-certificates
+RUN apt-get install -y ca-certificates curl
 
 COPY --from=builder \
  /opt/bin/controller \
